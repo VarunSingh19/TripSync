@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 // 'use client'
 
 // import { useState, useEffect } from "react"
@@ -445,7 +446,7 @@
 // export default CreateTrip
 'use client'
 
-import React, { useState, useEffect } from "react"
+import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -456,12 +457,13 @@ import { toast } from "sonner"
 import { Dialog, DialogContent, DialogDescription, DialogHeader } from "@/components/ui/dialog"
 import { doc, setDoc } from "firebase/firestore"
 import { db } from "@/service/firebaseConfig"
-import { Plane, DollarSign, Users, MapPin, Calendar, Loader2, Sparkles, Brain } from 'lucide-react'
+import { DollarSign, Users, MapPin, Calendar, Loader2, Sparkles, Brain } from 'lucide-react'
 import Confetti from 'react-confetti'
 import { useNavigate } from "react-router-dom"
 import { useUser, SignInButton } from "@clerk/clerk-react"
 
 // Improved FloatingBalloon component
+// eslint-disable-next-line react/prop-types
 const FloatingBalloon = ({ color }) => (
   <motion.div
     className={`absolute w-12 h-16 rounded-full bg-${color}-500 opacity-70`}
