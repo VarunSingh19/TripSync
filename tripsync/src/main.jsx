@@ -3,13 +3,14 @@ import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
 import './index.css'
 import { createBrowserRouter, RouterProvider } from 'react-router-dom'
+import { ClerkProvider } from '@clerk/clerk-react'
 import CreateTrip from './create-trip/index.jsx'
 import Header from './components/custom/Header.jsx'
 import ManualCreateTrip from './create-trip/manual.jsx'
 import { Toaster } from './components/ui/toaster.jsx'
-import { GoogleOAuthProvider } from '@react-oauth/google';
 import ViewTrip from './view-trip/[tripId]/index.jsx'
 import MyTrips from './my-trips/index.jsx'
+
 const router = createBrowserRouter([
   {
     path: '/',
@@ -32,12 +33,15 @@ const router = createBrowserRouter([
     element: <MyTrips />
   }
 ])
+
+const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_AUTH_CLIENT_ID}>
+    <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY}>
       <Header />
       <Toaster />
       <RouterProvider router={router} />
-    </GoogleOAuthProvider>
+    </ClerkProvider>
   </React.StrictMode>,
 )

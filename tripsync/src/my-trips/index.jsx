@@ -55,7 +55,7 @@ export default function MyTrips() {
                     animate={{ opacity: 1 }}
                     transition={{ duration: 0.5 }}
                 >
-                    <p className="text-xl mb-4">You haven't planned any trips yet.</p>
+                    <p className="text-xl mb-4">You haven&apos;t planned any trips yet.</p>
 
                     <Link to={'/create-trip'}>
                         <button

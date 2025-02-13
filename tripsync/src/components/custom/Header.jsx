@@ -1,24 +1,19 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { Button } from "@/components/ui/button";
-import { LogIn } from "lucide-react";
 import {
     Popover,
     PopoverContent,
     PopoverTrigger,
 } from "@/components/ui/popover";
-import { googleLogout, useGoogleLogin } from "@react-oauth/google";
 import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogHeader,
-} from "@/components/ui/dialog";
-import { motion } from "framer-motion";
-import { Brain } from 'lucide-react';
-import { FcGoogle } from "react-icons/fc";
-import axios from "axios";
+    SignInButton,
+    SignOutButton,
+    UserButton,
+    useUser,
+    useClerk
+} from "@clerk/clerk-react";
 
-const ProfileAvatar = ({ userName, avatarUrl, onError }) => {
+const ProfileAvatar = ({ userName, imageUrl }) => {
     const getInitials = (name) => {
         return name
             ?.split(' ')
@@ -47,13 +42,12 @@ const ProfileAvatar = ({ userName, avatarUrl, onError }) => {
 
     return (
         <div className="h-10 w-10 rounded-full overflow-hidden">
-            {avatarUrl ? (
+            {imageUrl ? (
                 <div className="h-full w-full bg-gradient-to-br from-purple-600 to-teal-600 p-0.5">
                     <img
-                        src={avatarUrl}
+                        src={imageUrl}
                         alt={`${userName}'s profile`}
                         className="h-full w-full rounded-full object-cover bg-white"
-                        onError={onError}
                     />
                 </div>
             ) : (
@@ -68,89 +62,8 @@ const ProfileAvatar = ({ userName, avatarUrl, onError }) => {
 };
 
 function Header() {
-    const [user, setUser] = useState(null);
-    const [openDialog, setOpenDialog] = useState(false);
-    const [loading, setLoading] = useState(false);
-    const [profileError, setProfileError] = useState(false);
-    const [avatarUrl, setAvatarUrl] = useState("");
-
-    const getUserProfile = async (tokenInfo) => {
-        setLoading(true);
-        setProfileError(false);
-
-        try {
-            const response = await axios.get(
-                `https://www.googleapis.com/oauth2/v1/userinfo?access_token=${tokenInfo?.access_token}`,
-                {
-                    headers: {
-                        Authorization: `Bearer ${tokenInfo?.access_token}`,
-                        Accept: "application/json",
-                    },
-                }
-            );
-
-            const userData = response.data;
-
-            // Create avatar URL with a timestamp to prevent caching
-            const timestamp = new Date().getTime();
-            const fallbackAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.name)}&background=random&color=fff&size=96&t=${timestamp}`;
-
-            const userDataToStore = {
-                ...userData,
-                picture: fallbackAvatar,
-            };
-
-            localStorage.setItem("user", JSON.stringify(userDataToStore));
-            setUser(userDataToStore);
-            setAvatarUrl(fallbackAvatar);
-            setOpenDialog(false);
-        } catch (error) {
-            console.error("Failed to fetch user profile", error);
-            setProfileError(true);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const login = useGoogleLogin({
-        onSuccess: (codeResp) => getUserProfile(codeResp),
-        onError: (error) => {
-            console.log(error);
-            setProfileError(true);
-        },
-    });
-
-    useEffect(() => {
-        try {
-            const userData = localStorage.getItem("user");
-            if (userData) {
-                const parsedUser = JSON.parse(userData);
-                setUser(parsedUser);
-                setAvatarUrl(parsedUser.picture);
-            }
-        } catch (error) {
-            console.error("Error parsing user data:", error);
-            localStorage.removeItem("user");
-        }
-    }, []);
-
-    const handleLogout = () => {
-        googleLogout();
-        localStorage.removeItem("user");
-        setUser(null);
-        setAvatarUrl("");
-    };
-
-    const handleAvatarError = () => {
-        // Generate a new avatar URL with timestamp on error
-        if (user?.name) {
-            const timestamp = new Date().getTime();
-            const newAvatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=random&color=fff&size=96&t=${timestamp}`;
-            setAvatarUrl(newAvatarUrl);
-        } else {
-            setAvatarUrl("");
-        }
-    };
+    const { isSignedIn, user } = useUser();
+    const { signOut } = useClerk();
 
     return (
         <header className="bg-gradient-to-r from-purple-900 via-blue-900 to-teal-900 p-3 shadow-lg">
@@ -163,7 +76,7 @@ function Header() {
                 </a>
 
                 <div className="flex items-center space-x-4">
-                    {user ? (
+                    {isSignedIn ? (
                         <div className="flex items-center space-x-2">
                             <a href="/create-trip">
                                 <Button
@@ -188,81 +101,42 @@ function Header() {
                                         variant="ghost"
                                         className="relative group p-0 hover:bg-transparent focus:ring-2 focus:ring-white/20 rounded-full"
                                     >
-                                        <ProfileAvatar
-                                            userName={user.name}
-                                            avatarUrl={avatarUrl}
-                                            onError={handleAvatarError}
-                                        />
+                                        <UserButton />
                                     </Button>
                                 </PopoverTrigger>
                                 <PopoverContent className="w-64 p-0 bg-white rounded-lg shadow-lg">
                                     <div className="p-4">
                                         <div className="flex items-center space-x-3 mb-4">
                                             <ProfileAvatar
-                                                userName={user.name}
-                                                avatarUrl={avatarUrl}
-                                                onError={handleAvatarError}
+                                                userName={user.fullName}
+                                                imageUrl={user.imageUrl}
                                             />
                                             <div>
-                                                <p className="font-medium text-lg text-gray-900">{user.name}</p>
-                                                <p className="text-sm text-gray-500">{user.email}</p>
+                                                <p className="font-medium text-lg text-gray-900">{user.fullName}</p>
+                                                <p className="text-sm text-gray-500">{user.primaryEmailAddress.emailAddress}</p>
                                             </div>
                                         </div>
-                                        <Button
-                                            onClick={handleLogout}
-                                            variant="ghost"
-                                            className="w-full bg-gray-50 hover:bg-gray-100 text-gray-900"
-                                        >
-                                            Logout
-                                        </Button>
+                                        <SignOutButton>
+                                            <Button
+                                                variant="ghost"
+                                                className="w-full bg-gray-50 hover:bg-gray-100 text-gray-900"
+                                            >
+                                                Logout
+                                            </Button>
+                                        </SignOutButton>
                                     </div>
                                 </PopoverContent>
                             </Popover>
                         </div>
                     ) : (
-                        <Button
-                            onClick={() => setOpenDialog(true)}
-                            className="bg-white text-purple-900 hover:bg-teal-50 transition-all duration-300 font-medium flex items-center space-x-2"
-                        >
-                            <LogIn className="h-4 w-4" />
-                            <span>Sign In</span>
-                        </Button>
+                        <SignInButton mode="modal">
+                            <Button className="bg-white text-purple-900 hover:bg-teal-50 transition-all duration-300 font-medium">
+                                Sign In
+                            </Button>
+                        </SignInButton>
                     )}
                 </div>
             </div>
-
-            <Dialog open={openDialog} onOpenChange={setOpenDialog}>
-                <DialogContent className="bg-gradient-to-br from-purple-900 to-indigo-900 rounded-2xl p-8 text-white">
-                    <DialogHeader>
-                        <DialogDescription className="text-center">
-                            <motion.div
-                                className="mx-auto mb-6 w-24 h-24 bg-white rounded-full flex items-center justify-center"
-                                initial={{ scale: 0 }}
-                                animate={{ scale: 1, rotate: 360 }}
-                                transition={{ type: "spring", stiffness: 260, damping: 20 }}
-                            >
-                                <Brain className="w-16 h-16 text-purple-600" />
-                            </motion.div>
-                            <h2 className="font-bold text-3xl text-purple-200 mb-3">Activate AI Trip Planner</h2>
-                            <p className="text-purple-300 mb-8">Sign in to unlock personalized AI-powered travel experiences</p>
-                            {profileError && (
-                                <p className="text-red-300 mb-4">Failed to load profile. Please try again.</p>
-                            )}
-                            <Button
-                                disabled={loading}
-                                onClick={() => {
-                                    setProfileError(false);
-                                    login();
-                                }}
-                                className="w-full py-4 bg-white hover:bg-gray-100 text-purple-900 text-lg font-semibold rounded-xl shadow-lg transition-all flex items-center justify-center space-x-3"
-                            >
-                                <FcGoogle className="h-7 w-7" />
-                                <span>{loading ? 'Signing in...' : 'Continue with Google'}</span>
-                            </Button>
-                        </DialogDescription>
-                    </DialogHeader>
-                </DialogContent>
-            </Dialog>
         </header>
     );
 }
