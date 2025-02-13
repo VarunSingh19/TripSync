@@ -5,29 +5,63 @@ import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Loader2 } from 'lucide-react'
 import UserTripCardItem from './components/UserTripCardItem'
+import { useUser } from '@clerk/clerk-react'
 
 export default function MyTrips() {
-    const navigate = useNavigate()
-    const [userTrips, setUserTrips] = useState([])
-    const [loading, setLoading] = useState(true)
+    const navigate = useNavigate();
+    const { isLoaded, isSignedIn, user } = useUser();
+    const [userTrips, setUserTrips] = useState([]);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        getUserTrips()
-    }, [])
+        // Wait until Clerk has loaded the user info
+        if (!isLoaded) return;
+        // If not signed in, redirect
+        if (!isSignedIn) {
+            navigate('/');
+            return;
+        }
+        // Fetch trips if the user exists
+        if (user) {
+            getUserTrips();
+        }
+    }, [isLoaded, isSignedIn, user, navigate]);
 
     const getUserTrips = async () => {
-        const user = JSON.parse(localStorage.getItem('user'))
-        if (!user) {
-            navigate('/')
-            return
+        if (!user) return;
+
+        const email =
+            user.emailAddresses && user.emailAddresses.length > 0
+                ? user.emailAddresses[0].emailAddress
+                : null;
+        if (!email) {
+            console.error('User email not found');
+            return;
         }
+        try {
+            const q = query(collection(db, 'AITrips'), where('userEmail', '==', email));
+            const querySnapshot = await getDocs(q);
+            const trips = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+            setUserTrips(trips);
+        } catch (error) {
+            console.error('Error fetching trips:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
-        const q = query(collection(db, 'AITrips'), where('userEmail', '==', user.email))
-        const querySnapshot = await getDocs(q)
+    // If Clerk hasn't finished loading, show a loader
+    if (!isLoaded) {
+        return (
+            <div className="flex justify-center items-center h-screen">
+                <Loader2 className="w-10 h-10 text-indigo-600 animate-spin" />
+            </div>
+        );
+    }
 
-        const trips = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
-        setUserTrips(trips)
-        setLoading(false)
+    // If user is not signed in (shouldn't happen because of the useEffect redirect), render nothing
+    if (!isSignedIn) {
+        return null;
     }
 
     return (
@@ -56,17 +90,13 @@ export default function MyTrips() {
                     transition={{ duration: 0.5 }}
                 >
                     <p className="text-xl mb-4">You haven't planned any trips yet.</p>
-
-                    <Link to={'/create-trip'}>
-                        <button
-                            onClick={() => navigate('/plan-trip')}
-                            className="bg-indigo-600 text-white px-6 py-2 rounded-full hover:bg-indigo-700 transition-colors"
-                        >
+                    <Link to="/create-trip">
+                        <button className="bg-indigo-600 text-white px-6 py-2 rounded-full hover:bg-indigo-700 transition-colors">
                             Plan a Trip
                         </button>
                     </Link>
                 </motion.div>
             )}
         </div>
-    )
+    );
 }
